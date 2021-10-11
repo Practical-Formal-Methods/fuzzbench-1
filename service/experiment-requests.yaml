@@ -19,7 +19,7 @@
 # You can run "make presubmit" to do basic validation on this file.
 # Please add new experiment requests towards the top of this file.
 
-- experiment: 2021-10-11-aflpp-random-fuzzing
+- experiment: 2021-10-11-aflpp-rf
   description: "Benchmark afl++ random fuzzing mode"
   fuzzers:
     - aflpp_random_base
