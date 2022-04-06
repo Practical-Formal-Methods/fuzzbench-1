@@ -717,6 +717,7 @@ def render_startup_script_template(instance_name: str, fuzzer: str,
         'oss_fuzz_corpus': experiment_config['oss_fuzz_corpus'],
         'num_cpu_cores': experiment_config['runner_num_cpu_cores'],
         'cpuset': CPUSET,
+        'random_seed_corpus': experiment_config['random_seed_corpus'],
     }
 
     if not local_experiment:
