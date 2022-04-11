@@ -66,7 +66,6 @@ _OSS_FUZZ_CORPUS_BACKUP_URL_FORMAT = (
 
 # max size allowed per seed corpus for AFL
 CORPUS_ELEMENT_BYTES_LIMIT = 1 * 1024 * 1024
-RANDOM_CORPORA_ZIP_DIR_NAME = "random_seed_corpora_zip"
 
 
 def read_and_validate_experiment_config(config_filename: str) -> Dict:
@@ -160,47 +159,39 @@ def validate_and_pack_random_seed_corpus(random_seed_corpus_dir, benchmarks):
         raise ValidationError('Corpus location "%s" is invalid.' %
                               random_seed_corpus_dir)
 
-    with tempfile.TemporaryDirectory() as zip_dir:
-        for benchmark in benchmarks:
-            benchmark_corpus_dir = os.path.join(random_seed_corpus_dir,
-                                                benchmark)
-            if not os.path.exists(benchmark_corpus_dir):
-                raise ValidationError('Random seed corpus directory for '
-                                      'benchmark "%s" does not exist.' %
-                                      benchmark)
-            if not os.path.isdir(benchmark_corpus_dir):
-                raise ValidationError('Seed corpus of benchmark "%s" must be '
-                                      'a directory.' % benchmark)
-            if not os.listdir(benchmark_corpus_dir):
-                raise ValidationError(
-                    'Seed corpus of benchmark "%s" is empty.' % benchmark)
+    for benchmark in benchmarks:
+        benchmark_corpus_dir = os.path.join(random_seed_corpus_dir, benchmark)
+        if not os.path.exists(benchmark_corpus_dir):
+            raise ValidationError('Random seed corpus directory for '
+                                  'benchmark "%s" does not exist.' % benchmark)
+        if not os.path.isdir(benchmark_corpus_dir):
+            raise ValidationError('Seed corpus of benchmark "%s" must be '
+                                  'a directory.' % benchmark)
+        if not os.listdir(benchmark_corpus_dir):
+            raise ValidationError('Seed corpus of benchmark "%s" is empty.' %
+                                  benchmark)
 
-            valid_corpus_files = set()
-            for root, _, files in os.walk(benchmark_corpus_dir):
-                for filename in files:
-                    file_path = os.path.join(root, filename)
-                    file_size = os.path.getsize(file_path)
+        valid_corpus_files = set()
+        for root, _, files in os.walk(benchmark_corpus_dir):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                file_size = os.path.getsize(file_path)
 
-                    if file_size == 0 or file_size > CORPUS_ELEMENT_BYTES_LIMIT:
-                        continue
-                    valid_corpus_files.add(file_path)
+                if file_size == 0 or file_size > CORPUS_ELEMENT_BYTES_LIMIT:
+                    continue
+                valid_corpus_files.add(file_path)
 
-            if not valid_corpus_files:
-                raise ValidationError('No valid corpus files for "%s"' %
-                                      benchmark)
+        if not valid_corpus_files:
+            raise ValidationError('No valid corpus files for "%s"' % benchmark)
 
-            benchmark_corpus_archive_path = os.path.join(
-                zip_dir, f'{benchmark}.zip')
-            with zipfile.ZipFile(benchmark_corpus_archive_path, 'w') as archive:
-                for filename in valid_corpus_files:
-                    dir_name = os.path.dirname(filename)
-                    archive.write(
-                        filename,
-                        os.path.relpath(filename, os.path.join(dir_name, '..')))
-
-        random_seed_corpora_zip_dir = os.path.join(random_seed_corpus_dir,
-                                                   RANDOM_CORPORA_ZIP_DIR_NAME)
-        filesystem.replace_dir(zip_dir, random_seed_corpora_zip_dir)
+        benchmark_corpus_archive_path = os.path.join(random_seed_corpus_dir,
+                                                     f'{benchmark}.zip')
+        with zipfile.ZipFile(benchmark_corpus_archive_path, 'w') as archive:
+            for filename in valid_corpus_files:
+                dir_name = os.path.dirname(filename)
+                archive.write(
+                    filename,
+                    os.path.relpath(filename, os.path.join(dir_name, '..')))
 
 
 def validate_benchmarks(benchmarks: List[str]):
@@ -395,13 +386,14 @@ def copy_resources_to_bucket(config_dir: str, config: Dict):
             add_oss_fuzz_corpus(benchmark, oss_fuzz_corpora_dir)
 
     if config['random_seed_corpus_dir']:
-        random_seed_corpus_zip = os.path.join(config['random_seed_corpus_dir'],
-                                              RANDOM_CORPORA_ZIP_DIR_NAME)
-        filestore_utils.cp(
-            random_seed_corpus_zip,
-            experiment_utils.get_random_seed_corpora_filestore_path(),
-            recursive=True,
-            parallel=True)
+        for benchmark in config['benchmarks']:
+            benchmark_corpus_archive_path = os.path.join(
+                config['random_seed_corpus_dir'], f'{benchmark}.zip')
+            filestore_utils.cp(
+                benchmark_corpus_archive_path,
+                experiment_utils.get_random_seed_corpora_filestore_path() + "/",
+                recursive=True,
+                parallel=True)
 
 
 class BaseDispatcher:
