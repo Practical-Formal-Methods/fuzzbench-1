@@ -596,7 +596,7 @@ def main():
     parser.add_argument('-rs',
                         '--random-seed-corpus',
                         help='Path to the random seed corpus',
-                        required=True)
+                        required=False)
 
     all_fuzzers = fuzzer_utils.get_fuzzer_names()
     parser.add_argument('-f',
