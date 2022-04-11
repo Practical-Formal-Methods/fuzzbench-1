@@ -168,7 +168,7 @@ def validate_and_pack_random_seed_corpus(random_seed_corpus, benchmarks):
                                       'benchmark "%s" does not exist.' %
                                       benchmark)
             if not os.path.isdir(benchmark_corpus_dir):
-                raise ValidationError('seed corpus of benchmark "%s" must be '
+                raise ValidationError('Seed corpus of benchmark "%s" must be '
                                       'a directory.' % benchmark)
             if not os.listdir(benchmark_corpus_dir):
                 raise ValidationError(
@@ -188,8 +188,8 @@ def validate_and_pack_random_seed_corpus(random_seed_corpus, benchmarks):
                 raise ValidationError('No valid corpus files for "%s"' %
                                       benchmark)
 
-            seed_zip_archive_path = os.path.join(zip_dir, f'{benchmark}.zip')
-            with zipfile.ZipFile(seed_zip_archive_path, 'w') as archive:
+            benchmark_corpus_archive_path = os.path.join(zip_dir, f'{benchmark}.zip')
+            with zipfile.ZipFile(benchmark_corpus_archive_path, 'w') as archive:
                 for filename in valid_corpus_files:
                     dir_name = os.path.dirname(filename)
                     archive.write(
