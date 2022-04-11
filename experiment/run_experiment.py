@@ -188,7 +188,8 @@ def validate_and_pack_random_seed_corpus(random_seed_corpus, benchmarks):
                 raise ValidationError('No valid corpus files for "%s"' %
                                       benchmark)
 
-            benchmark_corpus_archive_path = os.path.join(zip_dir, f'{benchmark}.zip')
+            benchmark_corpus_archive_path = os.path.join(
+                zip_dir, f'{benchmark}.zip')
             with zipfile.ZipFile(benchmark_corpus_archive_path, 'w') as archive:
                 for filename in valid_corpus_files:
                     dir_name = os.path.dirname(filename)
@@ -668,11 +669,11 @@ def main():
 
     if args.random_seed_corpus:
         if args.no_seeds:
-            parser.error(
-                'You cannot start an experiment with no_seeds option if'
-                ' seeds location is provided you')
+            parser.error('Cannot enable options "random_seed_corpus" and '
+                         '"no_seeds" at the same time')
         if args.oss_fuzz_corpus:
-            parser.error('Cannot use seeds from multiple sources')
+            parser.error('Cannot enable options "random_seed_corpus" and '
+                         '"oss_fuzz_corpus" at the same time')
 
     start_experiment(args.experiment_name,
                      args.experiment_config,
