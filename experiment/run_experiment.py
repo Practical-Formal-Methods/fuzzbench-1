@@ -154,15 +154,16 @@ def get_directories(parent_dir):
 
 
 # pylint: disable=too-many-locals
-def validate_and_pack_random_seed_corpus(random_seed_corpus, benchmarks):
+def validate_and_pack_random_seed_corpus(random_seed_corpus_dir, benchmarks):
     """Validate and archive seed corpus provided by user and."""
-    if not os.path.isdir(random_seed_corpus):
+    if not os.path.isdir(random_seed_corpus_dir):
         raise ValidationError('Corpus location "%s" is invalid.' %
-                              random_seed_corpus)
+                              random_seed_corpus_dir)
 
     with tempfile.TemporaryDirectory() as zip_dir:
         for benchmark in benchmarks:
-            benchmark_corpus_dir = os.path.join(random_seed_corpus, benchmark)
+            benchmark_corpus_dir = os.path.join(random_seed_corpus_dir,
+                                                benchmark)
             if not os.path.exists(benchmark_corpus_dir):
                 raise ValidationError('Random seed corpus directory for '
                                       'benchmark "%s" does not exist.' %
@@ -197,7 +198,7 @@ def validate_and_pack_random_seed_corpus(random_seed_corpus, benchmarks):
                         filename,
                         os.path.relpath(filename, os.path.join(dir_name, '..')))
 
-        random_seed_corpora_zip_dir = os.path.join(random_seed_corpus,
+        random_seed_corpora_zip_dir = os.path.join(random_seed_corpus_dir,
                                                    RANDOM_CORPORA_ZIP_DIR_NAME)
         filesystem.replace_dir(zip_dir, random_seed_corpora_zip_dir)
 
@@ -275,7 +276,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
         measurers_cpus=None,
         runners_cpus=None,
         use_branch_coverage=False,
-        random_seed_corpus=None):
+        random_seed_corpus_dir=None):
     """Start a fuzzer benchmarking experiment."""
     if not allow_uncommitted_changes:
         check_no_uncommitted_changes()
@@ -306,9 +307,9 @@ def start_experiment(  # pylint: disable=too-many-arguments
     # experiments easier to run.
     config['runner_memory'] = config.get('runner_memory', '12GB')
 
-    config['random_seed_corpus'] = random_seed_corpus
-    if config['random_seed_corpus']:
-        validate_and_pack_random_seed_corpus(config['random_seed_corpus'],
+    config['random_seed_corpus_dir'] = random_seed_corpus_dir
+    if config['random_seed_corpus_dir']:
+        validate_and_pack_random_seed_corpus(config['random_seed_corpus_dir'],
                                              benchmarks)
 
     return start_experiment_from_full_config(config)
@@ -393,8 +394,8 @@ def copy_resources_to_bucket(config_dir: str, config: Dict):
         for benchmark in config['benchmarks']:
             add_oss_fuzz_corpus(benchmark, oss_fuzz_corpora_dir)
 
-    if config['random_seed_corpus']:
-        random_seed_corpus_zip = os.path.join(config['random_seed_corpus'],
+    if config['random_seed_corpus_dir']:
+        random_seed_corpus_zip = os.path.join(config['random_seed_corpus_dir'],
                                               RANDOM_CORPORA_ZIP_DIR_NAME)
         filestore_utils.cp(
             random_seed_corpus_zip,
@@ -595,7 +596,7 @@ def main():
                         help='Cpus available to the runners.',
                         required=False)
     parser.add_argument('-rs',
-                        '--random-seed-corpus',
+                        '--random-seed-corpus-dir',
                         help='Path to the random seed corpus',
                         required=False)
 
@@ -667,12 +668,12 @@ def main():
         parser.error('The sum of runners and measurers cpus is greater than the'
                      ' available cpu cores (%d)' % os.cpu_count())
 
-    if args.random_seed_corpus:
+    if args.random_seed_corpus_dir:
         if args.no_seeds:
-            parser.error('Cannot enable options "random_seed_corpus" and '
+            parser.error('Cannot enable options "random_seed_corpus_dir" and '
                          '"no_seeds" at the same time')
         if args.oss_fuzz_corpus:
-            parser.error('Cannot enable options "random_seed_corpus" and '
+            parser.error('Cannot enable options "random_seed_corpus_dir" and '
                          '"oss_fuzz_corpus" at the same time')
 
     start_experiment(args.experiment_name,
@@ -688,7 +689,7 @@ def main():
                      measurers_cpus=measurers_cpus,
                      runners_cpus=runners_cpus,
                      use_branch_coverage=args.use_branch_coverage,
-                     random_seed_corpus=args.random_seed_corpus)
+                     random_seed_corpus_dir=args.random_seed_corpus_dir)
     return 0
 
 
