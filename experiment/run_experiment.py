@@ -391,7 +391,7 @@ def copy_resources_to_bucket(config_dir: str, config: Dict):
                 config['random_seed_corpus_dir'], f'{benchmark}.zip')
             filestore_utils.cp(
                 benchmark_corpus_archive_path,
-                experiment_utils.get_random_seed_corpora_filestore_path() + "/",
+                experiment_utils.get_random_seed_corpora_filestore_path() + '/',
                 recursive=True,
                 parallel=True)
 
