@@ -116,18 +116,31 @@ def get_clusterfuzz_seed_corpus_path(fuzz_target_path):
     return seed_corpus_path if os.path.exists(seed_corpus_path) else None
 
 
-def _unpack_random_seed_corpus(corpus_directory):
-    "Unpack and randomply pick one input from the seed corpus provided by user"
+def _unpack_custom_seed_corpus(corpus_directory):
+    "Unpack seed corpus provided by user"
     # remove initial seed corpus
     shutil.rmtree(corpus_directory)
     os.mkdir(corpus_directory)
     benchmark = environment.get('BENCHMARK')
     corpus_archive_filename = posixpath.join(
-        experiment_utils.get_random_seed_corpora_filestore_path(),
+        experiment_utils.get_custom_seed_corpora_filestore_path(),
         f'{benchmark}.zip')
+    idx = 0
     with zipfile.ZipFile(corpus_archive_filename) as zip_file:
-        selected_file = random.choice(zip_file.infolist())
-        zip_file.extract(selected_file, corpus_directory)
+        for seed_corpus_file in zip_file.infolist():
+            if seed_corpus_file.filename.endswith('/'):
+                # Ignore directories.
+                continue
+
+            if seed_corpus_file.file_size > CORPUS_ELEMENT_BYTES_LIMIT:
+                continue
+
+            output_filename = '%016d' % idx
+            output_file_path = os.path.join(corpus_directory, output_filename)
+            zip_file.extract(seed_corpus_file, output_file_path)
+            idx += 1
+
+    logs.info('Unarchived %d files from custom seed corpus.', idx)
 
 
 def _unpack_clusterfuzz_seed_corpus(fuzz_target_path, corpus_directory):
@@ -187,8 +200,8 @@ def run_fuzzer(max_total_time, log_filename):
         logs.error('Fuzz target binary not found.')
         return
 
-    if environment.get('RANDOM_SEED_CORPUS_DIR'):
-        _unpack_random_seed_corpus(input_corpus)
+    if environment.get('CUSTOM_SEED_CORPUS'):
+        _unpack_custom_seed_corpus(input_corpus)
     else:
         _unpack_clusterfuzz_seed_corpus(target_binary, input_corpus)
     _clean_seed_corpus(input_corpus)
