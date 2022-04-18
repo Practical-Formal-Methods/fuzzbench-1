@@ -44,6 +44,7 @@ docker run \
 -e TRIAL_ID={{trial_id}} \
 -e MAX_TOTAL_TIME={{max_total_time}} \
 -e NO_SEEDS={{no_seeds}} \
+-e RANDOM_SEED_CORPUS={{random_seed_corpus}} \
 -e NO_DICTIONARIES={{no_dictionaries}} \
 -e OSS_FUZZ_CORPUS={{oss_fuzz_corpus}} \
 -e DOCKER_REGISTRY={{docker_registry}} {% if not local_experiment %}-e CLOUD_PROJECT={{cloud_project}} -e CLOUD_COMPUTE_ZONE={{cloud_compute_zone}} {% endif %}\

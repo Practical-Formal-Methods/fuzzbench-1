@@ -27,6 +27,7 @@ import tarfile
 import threading
 import time
 import zipfile
+import random
 
 from common import benchmark_config
 from common import environment
@@ -106,6 +107,20 @@ def _clean_seed_corpus(seed_corpus_dir):
         logs.error('Failed to move seed corpus files: %s', failed_to_move_files)
 
 
+def get_random_seed_corpus(seed_corpus_dir):
+    corpus_files = os.listdir(seed_corpus_dir)
+    if len(corpus_files) > 1:
+        # randomly pick single input and delete the rest
+        selected_file = random.choice(corpus_files)
+        logs.info('Select input %s as a seed corpus.', selected_file)
+        for corpus_file in corpus_files:
+            if corpus_file is not selected_file:
+                corpus_file_path = os.path.abspath(corpus_file)
+                os.remove(corpus_file_path)
+    else:
+        logs.info('Insufficient files, will fuzz with the original corpus')
+
+
 def get_clusterfuzz_seed_corpus_path(fuzz_target_path):
     """Returns the path of the clusterfuzz seed corpus archive if one exists.
     Otherwise returns None."""
@@ -174,6 +189,8 @@ def run_fuzzer(max_total_time, log_filename):
 
     _unpack_clusterfuzz_seed_corpus(target_binary, input_corpus)
     _clean_seed_corpus(input_corpus)
+    if environment.get('RANDOM_SEED_CORPUS'):
+        get_random_seed_corpus(input_corpus)
 
     if max_total_time is None:
         logs.warning('max_total_time is None. Fuzzing indefinitely.')

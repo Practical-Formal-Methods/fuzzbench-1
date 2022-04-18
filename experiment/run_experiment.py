@@ -219,7 +219,8 @@ def start_experiment(  # pylint: disable=too-many-arguments
         allow_uncommitted_changes=False,
         concurrent_builds=None,
         measurers_cpus=None,
-        runners_cpus=None):
+        runners_cpus=None,
+        random_seed_corpus=False):
     """Start a fuzzer benchmarking experiment."""
     if not allow_uncommitted_changes:
         check_no_uncommitted_changes()
@@ -233,6 +234,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
     config['experiment'] = experiment_name
     config['git_hash'] = get_git_hash()
     config['no_seeds'] = no_seeds
+    config['random_seed_corpus'] = random_seed_corpus
     config['no_dictionaries'] = no_dictionaries
     config['oss_fuzz_corpus'] = oss_fuzz_corpus
     config['description'] = description
@@ -537,6 +539,12 @@ def main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-rs',
+                        '--random-seed-corpus',
+                        help='Select single input randomly as a seed corpus.',
+                        required=False,
+                        default=False,
+                        action='store_true')
     parser.add_argument('-nd',
                         '--no-dictionaries',
                         help='Should trials be conducted without dictionaries.',
@@ -585,6 +593,10 @@ def main():
         parser.error('The sum of runners and measurers cpus is greater than the'
                      ' available cpu cores (%d)' % os.cpu_count())
 
+    if args.random_seed_corpus and args.no_seeds:
+        parser.error('Cannot enable options "random_seed_corpus" and "no_seeds" '
+                     ' at the same time')
+
     start_experiment(args.experiment_name,
                      args.experiment_config,
                      args.benchmarks,
@@ -596,7 +608,8 @@ def main():
                      allow_uncommitted_changes=args.allow_uncommitted_changes,
                      concurrent_builds=concurrent_builds,
                      measurers_cpus=measurers_cpus,
-                     runners_cpus=runners_cpus)
+                     runners_cpus=runners_cpus,
+                     random_seed_corpus=args.random_seed_corpus)
     return 0
 
 
