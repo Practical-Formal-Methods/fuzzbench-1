@@ -42,8 +42,10 @@ docker run \
 -e BENCHMARK={{benchmark}} \
 -e EXPERIMENT={{experiment}} \
 -e TRIAL_ID={{trial_id}} \
+-e TRIAL_GROUP_NUM={{trial_group_num}} \
 -e MAX_TOTAL_TIME={{max_total_time}} \
 -e NO_SEEDS={{no_seeds}} \
+-e TARGET_FUZZING={{target_fuzzing}} \
 -e NO_DICTIONARIES={{no_dictionaries}} \
 -e OSS_FUZZ_CORPUS={{oss_fuzz_corpus}} \
 -e CUSTOM_SEED_CORPUS_DIR={{custom_seed_corpus_dir}} \

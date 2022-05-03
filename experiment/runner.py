@@ -115,6 +115,20 @@ def get_clusterfuzz_seed_corpus_path(fuzz_target_path):
     return seed_corpus_path if os.path.exists(seed_corpus_path) else None
 
 
+def _unpack_target_fuzzing_corpus(corpus_directory):
+    # remove initial seed corpus
+    shutil.rmtree(corpus_directory)
+
+    benchmark = environment.get('BENCHMARK')
+    trial_group_num = environment.get('TRIAL_GROUP_NUM')
+    target_fuzzing_corpora_dir = experiment_utils.get_target_fuzzing_corpora_filestore_path(
+    )
+    target_fuzzing_sub_dir = 'trial-group-%s' % int(trial_group_num)
+    target_fuzzing_dir = posixpath.join(target_fuzzing_corpora_dir, benchmark,
+                                        target_fuzzing_sub_dir)
+    shutil.copytree(target_fuzzing_dir, corpus_directory)
+
+
 def _unpack_custom_seed_corpus(corpus_directory):
     "Unpack seed corpus provided by user"
     # remove initial seed corpus
@@ -200,7 +214,10 @@ def run_fuzzer(max_total_time, log_filename):
         return
 
     if environment.get('CUSTOM_SEED_CORPUS_DIR'):
-        _unpack_custom_seed_corpus(input_corpus)
+        if environment.get('TARGET_FUZZING'):
+            _unpack_target_fuzzing_corpus(input_corpus)
+        else:
+            _unpack_custom_seed_corpus(input_corpus)
     else:
         _unpack_clusterfuzz_seed_corpus(target_binary, input_corpus)
     _clean_seed_corpus(input_corpus)

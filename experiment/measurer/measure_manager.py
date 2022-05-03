@@ -32,6 +32,7 @@ import psutil
 from sqlalchemy import func
 from sqlalchemy import orm
 
+from common import target_fuzzing_utils
 from common import benchmark_config
 from common import experiment_utils
 from common import experiment_path as exp_path
@@ -51,7 +52,8 @@ from experiment import scheduler
 logger = logs.Logger('measurer')  # pylint: disable=invalid-name
 
 SnapshotMeasureRequest = collections.namedtuple(
-    'SnapshotMeasureRequest', ['fuzzer', 'benchmark', 'trial_id', 'cycle'])
+    'SnapshotMeasureRequest',
+    ['fuzzer', 'benchmark', 'trial_id', 'cycle', 'trial_group_num'])
 
 NUM_RETRIES = 3
 RETRY_DELAY = 3
@@ -76,7 +78,10 @@ def measure_main(experiment_config):
     max_total_time = experiment_config['max_total_time']
     measurers_cpus = experiment_config['measurers_cpus']
     runners_cpus = experiment_config['runners_cpus']
-    measure_loop(experiment, max_total_time, measurers_cpus, runners_cpus)
+    trials = experiment_config['trials']
+    target_fuzzing = experiment_config['target_fuzzing']
+    measure_loop(experiment, trials, max_total_time, measurers_cpus,
+                 runners_cpus, target_fuzzing)
 
     # Clean up resources.
     gc.collect()
@@ -95,9 +100,11 @@ def _process_init(cores_queue):
 
 
 def measure_loop(experiment: str,
+                 trials: int,
                  max_total_time: int,
                  measurers_cpus=None,
-                 runners_cpus=None):
+                 runners_cpus=None,
+                 target_fuzzing=False):
     """Continuously measure trials for |experiment|."""
     logger.info('Start measure_loop.')
 
@@ -116,7 +123,7 @@ def measure_loop(experiment: str,
 
     with multiprocessing.Pool(
             *pool_args) as pool, multiprocessing.Manager() as manager:
-        set_up_coverage_binaries(pool, experiment)
+        set_up_coverage_binaries(pool, experiment, trials)
         # Using Multiprocessing.Queue will fail with a complaint about
         # inheriting queue.
         q = manager.Queue()  # pytype: disable=attribute-error
@@ -126,7 +133,8 @@ def measure_loop(experiment: str,
                 # races.
                 all_trials_ended = scheduler.all_trials_ended(experiment)
 
-                if not measure_all_trials(experiment, max_total_time, pool, q):
+                if not measure_all_trials(experiment, max_total_time, pool, q,
+                                          target_fuzzing):
                     # We didn't measure any trials.
                     if all_trials_ended:
                         # There are no trials producing snapshots to measure.
@@ -141,7 +149,11 @@ def measure_loop(experiment: str,
     logger.info('Finished measure loop.')
 
 
-def measure_all_trials(experiment: str, max_total_time: int, pool, q) -> bool:  # pylint: disable=invalid-name
+def measure_all_trials(experiment: str,
+                       max_total_time: int,
+                       pool,
+                       q,
+                       target_fuzzing=False) -> bool:  # pylint: disable=invalid-name
     """Get coverage data (with coverage runs) for all active trials. Note that
     this should not be called unless multiprocessing.set_start_method('spawn')
     was called first. Otherwise it will use fork which breaks logging."""
@@ -158,7 +170,7 @@ def measure_all_trials(experiment: str, max_total_time: int, pool, q) -> bool:  
         return False
 
     measure_trial_coverage_args = [
-        (unmeasured_snapshot, max_cycle, q)
+        (unmeasured_snapshot, max_cycle, q, target_fuzzing)
         for unmeasured_snapshot in unmeasured_snapshots
     ]
 
@@ -253,13 +265,15 @@ def _get_unmeasured_first_snapshots(
     snapshot for their trial. The trials are trials in |experiment|."""
     trials_without_snapshots = _query_unmeasured_trials(experiment)
     return [
-        SnapshotMeasureRequest(trial.fuzzer, trial.benchmark, trial.id, 1)
+        SnapshotMeasureRequest(trial.fuzzer, trial.benchmark, trial.id, 1,
+                               trial.trial_group_num)
         for trial in trials_without_snapshots
     ]
 
 
 SnapshotWithTime = collections.namedtuple(
-    'SnapshotWithTime', ['fuzzer', 'benchmark', 'trial_id', 'time'])
+    'SnapshotWithTime',
+    ['fuzzer', 'benchmark', 'trial_id', 'time', 'trial_group_num'])
 
 
 def _query_measured_latest_snapshots(experiment: str):
@@ -270,7 +284,8 @@ def _query_measured_latest_snapshots(experiment: str):
     # The order of these columns must correspond to the fields in
     # SnapshotWithTime.
     columns = (models.Trial.fuzzer, models.Trial.benchmark,
-               models.Snapshot.trial_id, latest_time_column)
+               models.Snapshot.trial_id, latest_time_column,
+               models.Trial.trial_group_num)
     experiment_filter = models.Snapshot.trial.has(experiment=experiment)
     group_by_columns = (models.Snapshot.trial_id, models.Trial.benchmark,
                         models.Trial.fuzzer)
@@ -300,7 +315,8 @@ def _get_unmeasured_next_snapshots(
         snapshot_with_cycle = SnapshotMeasureRequest(snapshot.fuzzer,
                                                      snapshot.benchmark,
                                                      snapshot.trial_id,
-                                                     next_cycle)
+                                                     next_cycle,
+                                                     snapshot.trial_group_num)
         next_snapshots.append(snapshot_with_cycle)
     return next_snapshots
 
@@ -357,8 +373,8 @@ class SnapshotMeasurer(coverage_utils.TrialCoverage):  # pylint: disable=too-man
     UNIT_BLACKLIST = collections.defaultdict(set)
 
     def __init__(self, fuzzer: str, benchmark: str, trial_num: int,
-                 trial_logger: logs.Logger):
-        super().__init__(fuzzer, benchmark, trial_num)
+                 trial_logger: logs.Logger, trial_group_num: int):
+        super().__init__(fuzzer, benchmark, trial_num, trial_group_num)
         self.logger = trial_logger
         self.corpus_dir = os.path.join(self.measurement_dir, 'corpus')
 
@@ -427,6 +443,31 @@ class SnapshotMeasurer(coverage_utils.TrialCoverage):  # pylint: disable=too-man
             else:
                 self.logger.error(
                     'Coverage summary json file generation failed in the end.')
+
+    def get_current_target_coverage(self) -> int:
+        """Get the current number of lines covered."""
+        if not os.path.exists(self.cov_summary_file):
+            self.logger.warning('No coverage summary json file found.')
+            return 0
+        try:
+            total_target_covered = 0
+            coverage_info = coverage_utils.get_coverage_infomation(
+                self.cov_summary_file)
+            covered_branches = target_fuzzing_utils.get_covered_branches_per_function(
+                coverage_info)
+            # measure target coverage
+            with db_utils.session_scope() as session:
+                target_branches = session.query(models.TargetCoverage).filter(
+                    models.TargetCoverage.trial_group_num ==
+                    self.trial_group_num).all()
+                for target_branch in target_branches:
+                    if target_branch.target_location in covered_branches:
+                        total_target_covered += 1
+            return total_target_covered
+        except Exception:  # pylint: disable=broad-except
+            self.logger.error(
+                'Coverage summary json file defective or missing.')
+            return 0
 
     def get_current_coverage(self) -> int:
         """Get the current number of lines covered."""
@@ -612,8 +653,8 @@ def get_fuzzer_stats(stats_filestore_path):
 
 
 def measure_trial_coverage(  # pylint: disable=invalid-name
-        measure_req, max_cycle: int,
-        q: multiprocessing.Queue) -> models.Snapshot:
+        measure_req, max_cycle: int, q: multiprocessing.Queue,
+        target_fuzzing) -> models.Snapshot:
     """Measure the coverage obtained by |trial_num| on |benchmark| using
     |fuzzer|."""
     initialize_logs()
@@ -624,24 +665,28 @@ def measure_trial_coverage(  # pylint: disable=invalid-name
         try:
             snapshot = measure_snapshot_coverage(measure_req.fuzzer,
                                                  measure_req.benchmark,
-                                                 measure_req.trial_id, cycle)
+                                                 measure_req.trial_id, cycle,
+                                                 measure_req.trial_group_num,
+                                                 target_fuzzing)
             if not snapshot:
                 break
             q.put(snapshot)
         except Exception:  # pylint: disable=broad-except
-            logger.error('Error measuring cycle.',
-                         extras={
-                             'fuzzer': measure_req.fuzzer,
-                             'benchmark': measure_req.benchmark,
-                             'trial_id': str(measure_req.trial_id),
-                             'cycle': str(cycle),
-                         })
+            logger.error(
+                'Error measuring cycle.',
+                extras={
+                    'fuzzer': measure_req.fuzzer,
+                    'benchmark': measure_req.benchmark,
+                    'trial_id': str(measure_req.trial_id),
+                    'trial_group_num': str(measure_req.trial_group_num),
+                    'cycle': str(cycle),
+                })
     logger.debug('Done measuring trial: %d.', measure_req.trial_id)
 
 
 def measure_snapshot_coverage(  # pylint: disable=too-many-locals
-        fuzzer: str, benchmark: str, trial_num: int,
-        cycle: int) -> models.Snapshot:
+        fuzzer: str, benchmark: str, trial_num: int, cycle: int,
+        trial_group_num: int, target_fuzzing: bool) -> models.Snapshot:
     """Measure coverage of the snapshot for |cycle| for |trial_num| of |fuzzer|
     and |benchmark|."""
     snapshot_logger = logs.Logger('measurer',
@@ -650,9 +695,10 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
                                       'benchmark': benchmark,
                                       'trial_id': str(trial_num),
                                       'cycle': str(cycle),
+                                      'trial_group_num': str(trial_group_num)
                                   })
     snapshot_measurer = SnapshotMeasurer(fuzzer, benchmark, trial_num,
-                                         snapshot_logger)
+                                         snapshot_logger, trial_group_num)
 
     measuring_start_time = time.time()
     snapshot_logger.info('Measuring cycle: %d.', cycle)
@@ -660,9 +706,14 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
     if snapshot_measurer.is_cycle_unchanged(cycle):
         snapshot_logger.info('Cycle: %d is unchanged.', cycle)
         regions_covered = snapshot_measurer.get_current_coverage()
+        targets_covered = 0
+        if target_fuzzing:
+            targets_covered = snapshot_measurer.get_current_target_coverage()
         fuzzer_stats_data = snapshot_measurer.get_fuzzer_stats(cycle)
         return models.Snapshot(time=this_time,
                                trial_id=trial_num,
+                               trial_group_num=trial_group_num,
+                               targets_covered=targets_covered,
                                edges_covered=regions_covered,
                                fuzzer_stats=fuzzer_stats_data,
                                crashes=[])
@@ -698,8 +749,13 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
 
     # Get the coverage of the new corpus units.
     regions_covered = snapshot_measurer.get_current_coverage()
+    targets_covered = 0
+    if target_fuzzing:
+        targets_covered = snapshot_measurer.get_current_target_coverage()
     fuzzer_stats_data = snapshot_measurer.get_fuzzer_stats(cycle)
     snapshot = models.Snapshot(time=this_time,
+                               trial_group_num=trial_group_num,
+                               targets_covered=targets_covered,
                                trial_id=trial_num,
                                edges_covered=regions_covered,
                                fuzzer_stats=fuzzer_stats_data,
@@ -714,7 +770,7 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
     return snapshot
 
 
-def set_up_coverage_binaries(pool, experiment):
+def set_up_coverage_binaries(pool, experiment, trials):
     """Set up coverage binaries for all benchmarks in |experiment|."""
     # Use set comprehension to select distinct benchmarks.
     with db_utils.session_scope() as session:

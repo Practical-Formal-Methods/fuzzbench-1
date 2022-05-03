@@ -78,6 +78,12 @@ def get_custom_seed_corpora_filestore_path():
                           'custom_seed_corpora')
 
 
+def get_target_fuzzing_corpora_filestore_path():
+    """Returns path containing seed corpora for the target fuzzing experiment."""
+    return posixpath.join(get_experiment_filestore_path(),
+                          'target-fuzzing-corpora')
+
+
 def get_dispatcher_instance_name(experiment: str) -> str:
     """Returns a dispatcher instance name for an experiment."""
     return 'd-%s' % experiment
