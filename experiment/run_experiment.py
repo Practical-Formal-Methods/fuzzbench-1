@@ -675,7 +675,8 @@ def main():
         parser.error('Target fuzzing can only be run with custom seed corpus')
 
     if args.random_corpus and not args.custom_seed_corpus_dir:
-        parser.error('Random corpus experiment can only be run with custom seed corpus')
+        parser.error(
+            'Random corpus option can only be run with custom seed corpus')
 
     start_experiment(args.experiment_name,
                      args.experiment_config,

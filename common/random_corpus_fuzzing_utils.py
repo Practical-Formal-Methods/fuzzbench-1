@@ -20,6 +20,7 @@ from common import experiment_path as exp_path
 
 MAX_RANDOM_CORPUS_FILES = 5
 
+
 def get_covered_branches_per_function(coverage_info):
     function_coverage_info = coverage_info["data"][0]["functions"]
     covered_branches = set([])
@@ -138,7 +139,7 @@ def prepare_benchmark_random_corpus(benchmark: str,
                                                MAX_RANDOM_CORPUS_FILES)
                     for file in dest_files:
                         zip_file.extract(file, dest_dir)
-                    
+
                     # extract covered branches of source and destination inputs
                     # then subtract to get targeting branches
                     src_branches = get_covered_branches(coverage_binary,

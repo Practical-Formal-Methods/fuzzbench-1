@@ -121,11 +121,10 @@ def _unpack_random_corpus(corpus_directory):
 
     benchmark = environment.get('BENCHMARK')
     trial_group_num = environment.get('TRIAL_GROUP_NUM')
-    random_corpora_dir = experiment_utils.get_random_corpora_filestore_path(
-    )
+    random_corpora_dir = experiment_utils.get_random_corpora_filestore_path()
     random_corpora_sub_dir = 'trial-group-%s' % int(trial_group_num)
     random_corpus_dir = posixpath.join(random_corpora_dir, benchmark,
-                                        random_corpora_sub_dir)
+                                       random_corpora_sub_dir)
     shutil.copytree(random_corpus_dir, corpus_directory)
 
 
@@ -214,7 +213,8 @@ def run_fuzzer(max_total_time, log_filename):
         return
 
     if environment.get('CUSTOM_SEED_CORPUS_DIR'):
-        if environment.get('RANDOM_CORPUS') or environment.get('TARGET_FUZZING'):
+        if environment.get('RANDOM_CORPUS') or environment.get(
+                'TARGET_FUZZING'):
             _unpack_random_corpus(input_corpus)
         else:
             _unpack_custom_seed_corpus(input_corpus)
