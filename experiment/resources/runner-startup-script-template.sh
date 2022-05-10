@@ -45,6 +45,7 @@ docker run \
 -e TRIAL_GROUP_NUM={{trial_group_num}} \
 -e MAX_TOTAL_TIME={{max_total_time}} \
 -e NO_SEEDS={{no_seeds}} \
+-e RANDOM_CORPUS={{random_corpus}} \
 -e TARGET_FUZZING={{target_fuzzing}} \
 -e NO_DICTIONARIES={{no_dictionaries}} \
 -e OSS_FUZZ_CORPUS={{oss_fuzz_corpus}} \

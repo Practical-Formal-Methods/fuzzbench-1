@@ -262,6 +262,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
         measurers_cpus=None,
         runners_cpus=None,
         custom_seed_corpus_dir=None,
+        random_corpus=None,
         target_fuzzing=False):
     """Start a fuzzer benchmarking experiment."""
     if not allow_uncommitted_changes:
@@ -296,6 +297,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
     if config['custom_seed_corpus_dir']:
         validate_and_pack_custom_seed_corpus(config['custom_seed_corpus_dir'],
                                              benchmarks)
+    config['random_corpus'] = random_corpus
     config['target_fuzzing'] = target_fuzzing
 
     return start_experiment_from_full_config(config)
@@ -613,6 +615,12 @@ def main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-rs',
+                        '--random-corpus',
+                        help='Randomly pick seed corpus.',
+                        required=False,
+                        default=False,
+                        action='store_true')
     parser.add_argument('-tf',
                         '--target-fuzzing',
                         help='Target fuzzing mode.',
@@ -664,7 +672,10 @@ def main():
                          '"oss_fuzz_corpus" at the same time')
 
     if args.target_fuzzing and not args.custom_seed_corpus_dir:
-        parser.error('Target fuzzing can only be used with custom seed corpus')
+        parser.error('Target fuzzing can only be run with custom seed corpus')
+
+    if args.random_corpus and not args.custom_seed_corpus_dir:
+        parser.error('Random corpus experiment can only be run with custom seed corpus')
 
     start_experiment(args.experiment_name,
                      args.experiment_config,
@@ -679,6 +690,7 @@ def main():
                      measurers_cpus=measurers_cpus,
                      runners_cpus=runners_cpus,
                      custom_seed_corpus_dir=args.custom_seed_corpus_dir,
+                     random_corpus=args.random_corpus,
                      target_fuzzing=args.target_fuzzing)
     return 0
 

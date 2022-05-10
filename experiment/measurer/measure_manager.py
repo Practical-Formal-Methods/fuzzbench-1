@@ -32,7 +32,7 @@ import psutil
 from sqlalchemy import func
 from sqlalchemy import orm
 
-from common import target_fuzzing_utils
+from common import random_corpus_fuzzing_utils
 from common import benchmark_config
 from common import experiment_utils
 from common import experiment_path as exp_path
@@ -453,7 +453,7 @@ class SnapshotMeasurer(coverage_utils.TrialCoverage):  # pylint: disable=too-man
             total_target_covered = 0
             coverage_info = coverage_utils.get_coverage_infomation(
                 self.cov_summary_file)
-            covered_branches = target_fuzzing_utils.get_covered_branches_per_function(
+            covered_branches = random_corpus_fuzzing_utils.get_covered_branches_per_function(
                 coverage_info)
             # measure target coverage
             with db_utils.session_scope() as session:

@@ -24,7 +24,7 @@ import threading
 import time
 from typing import List
 
-from common import target_fuzzing_utils
+from common import random_corpus_fuzzing_utils
 from common import experiment_path as exp_path
 from common import experiment_utils
 from common import logs
@@ -161,9 +161,10 @@ def dispatcher_main():
                                      experiment.config['concurrent_builds'])
     _initialize_trials_in_db(trials)
 
-    if experiment.config['target_fuzzing']:
-        target_fuzzing_utils.main_loop(experiment.benchmarks,
-                                       experiment.num_trials)
+    if experiment.config['random_corpus'] or experiment.config['target_fuzzing']:
+        random_corpus_fuzzing_utils.initialize_random_corpus_fuzzing(
+            experiment.benchmarks, experiment.num_trials,
+            experiment.config['target_fuzzing'])
 
     create_work_subdirs(['experiment-folders', 'measurement-folders'])
 
