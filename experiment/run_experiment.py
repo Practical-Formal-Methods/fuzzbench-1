@@ -261,7 +261,9 @@ def start_experiment(  # pylint: disable=too-many-arguments
         concurrent_builds=None,
         measurers_cpus=None,
         runners_cpus=None,
-        custom_seed_corpus_dir=None):
+        custom_seed_corpus_dir=None,
+        random_corpus=None,
+        target_fuzzing=False):
     """Start a fuzzer benchmarking experiment."""
     if not allow_uncommitted_changes:
         check_no_uncommitted_changes()
@@ -295,6 +297,8 @@ def start_experiment(  # pylint: disable=too-many-arguments
     if config['custom_seed_corpus_dir']:
         validate_and_pack_custom_seed_corpus(config['custom_seed_corpus_dir'],
                                              benchmarks)
+    config['random_corpus'] = random_corpus
+    config['target_fuzzing'] = target_fuzzing
 
     return start_experiment_from_full_config(config)
 
@@ -611,6 +615,18 @@ def main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-rs',
+                        '--random-corpus',
+                        help='Randomly pick seed corpus.',
+                        required=False,
+                        default=False,
+                        action='store_true')
+    parser.add_argument('-tf',
+                        '--target-fuzzing',
+                        help='Target fuzzing mode.',
+                        required=False,
+                        default=False,
+                        action='store_true')
     parser.add_argument(
         '-o',
         '--oss-fuzz-corpus',
@@ -655,6 +671,13 @@ def main():
             parser.error('Cannot enable options "custom_seed_corpus_dir" and '
                          '"oss_fuzz_corpus" at the same time')
 
+    if args.target_fuzzing and not args.custom_seed_corpus_dir:
+        parser.error('Target fuzzing can only be run with custom seed corpus')
+
+    if args.random_corpus and not args.custom_seed_corpus_dir:
+        parser.error(
+            'Random corpus option can only be run with custom seed corpus')
+
     start_experiment(args.experiment_name,
                      args.experiment_config,
                      args.benchmarks,
@@ -667,7 +690,9 @@ def main():
                      concurrent_builds=concurrent_builds,
                      measurers_cpus=measurers_cpus,
                      runners_cpus=runners_cpus,
-                     custom_seed_corpus_dir=args.custom_seed_corpus_dir)
+                     custom_seed_corpus_dir=args.custom_seed_corpus_dir,
+                     random_corpus=args.random_corpus,
+                     target_fuzzing=args.target_fuzzing)
     return 0
 
 

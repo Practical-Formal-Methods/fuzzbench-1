@@ -651,6 +651,7 @@ class TrialProxy:
         self.time_started = trial.time_started
         self.time_ended = trial.time_ended
         self.preemptible = trial.preemptible
+        self.trial_group_num = trial.trial_group_num
 
 
 def _initialize_logs(experiment):
@@ -678,7 +679,8 @@ def _start_trial(trial: TrialProxy, experiment_config: dict):
     _initialize_logs(experiment_config['experiment'])
     logger.info('Start trial %d.', trial.id)
     started = create_trial_instance(trial.fuzzer, trial.benchmark, trial.id,
-                                    experiment_config, trial.preemptible)
+                                    trial.trial_group_num, experiment_config,
+                                    trial.preemptible)
     if started:
         trial.time_started = datetime_now()
         return trial
@@ -688,6 +690,7 @@ def _start_trial(trial: TrialProxy, experiment_config: dict):
 
 def render_startup_script_template(instance_name: str, fuzzer: str,
                                    benchmark: str, trial_id: int,
+                                   trial_group_num: int,
                                    experiment_config: dict):
     """Render the startup script using the template and the parameters
     provided and return the result."""
@@ -705,6 +708,7 @@ def render_startup_script_template(instance_name: str, fuzzer: str,
         'experiment': experiment,
         'fuzzer': fuzzer,
         'trial_id': trial_id,
+        'trial_group_num': trial_group_num,
         'max_total_time': experiment_config['max_total_time'],
         'experiment_filestore': experiment_config['experiment_filestore'],
         'report_filestore': experiment_config['report_filestore'],
@@ -713,6 +717,8 @@ def render_startup_script_template(instance_name: str, fuzzer: str,
         'docker_registry': experiment_config['docker_registry'],
         'local_experiment': local_experiment,
         'no_seeds': experiment_config['no_seeds'],
+        'random_corpus': experiment_config['random_corpus'],
+        'target_fuzzing': experiment_config['target_fuzzing'],
         'no_dictionaries': experiment_config['no_dictionaries'],
         'oss_fuzz_corpus': experiment_config['oss_fuzz_corpus'],
         'num_cpu_cores': experiment_config['runner_num_cpu_cores'],
@@ -728,13 +734,15 @@ def render_startup_script_template(instance_name: str, fuzzer: str,
 
 
 def create_trial_instance(fuzzer: str, benchmark: str, trial_id: int,
-                          experiment_config: dict, preemptible: bool) -> bool:
+                          trial_group_num: int, experiment_config: dict,
+                          preemptible: bool) -> bool:
     """Create or start a trial instance for a specific
     trial_id,fuzzer,benchmark."""
     instance_name = experiment_utils.get_trial_instance_name(
         experiment_config['experiment'], trial_id)
     startup_script = render_startup_script_template(instance_name, fuzzer,
                                                     benchmark, trial_id,
+                                                    trial_group_num,
                                                     experiment_config)
     startup_script_path = '/tmp/%s-start-docker.sh' % instance_name
     with open(startup_script_path, 'w') as file_handle:
