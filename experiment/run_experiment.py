@@ -240,7 +240,8 @@ def start_experiment(  # pylint: disable=too-many-arguments
         concurrent_builds=None,
         measurers_cpus=None,
         runners_cpus=None,
-        custom_seed_corpus_dir=None):
+        custom_seed_corpus_dir=None,
+        random_corpus=False):
     """Start a fuzzer benchmarking experiment."""
     if not allow_uncommitted_changes:
         check_no_uncommitted_changes()
@@ -260,6 +261,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
     config['concurrent_builds'] = concurrent_builds
     config['measurers_cpus'] = measurers_cpus
     config['runners_cpus'] = runners_cpus
+    config['random_corpus'] = random_corpus
     config['runner_machine_type'] = config.get('runner_machine_type',
                                                'n1-standard-1')
     config['runner_num_cpu_cores'] = config.get('runner_num_cpu_cores', 1)
@@ -590,6 +592,12 @@ def main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-rs',
+                        '--random-corpus',
+                        help='Randomly pick seed corpus.',
+                        required=False,
+                        default=False,
+                        action='store_true')
     parser.add_argument(
         '-o',
         '--oss-fuzz-corpus',
@@ -634,6 +642,9 @@ def main():
             parser.error('Cannot enable options "custom_seed_corpus_dir" and '
                          '"oss_fuzz_corpus" at the same time')
 
+    if args.random_corpus and not args.custom_seed_corpus_dir:
+        parser.error('Random corpus option can only run with with custom seeds')
+
     start_experiment(args.experiment_name,
                      args.experiment_config,
                      args.benchmarks,
@@ -646,7 +657,8 @@ def main():
                      concurrent_builds=concurrent_builds,
                      measurers_cpus=measurers_cpus,
                      runners_cpus=runners_cpus,
-                     custom_seed_corpus_dir=args.custom_seed_corpus_dir)
+                     custom_seed_corpus_dir=args.custom_seed_corpus_dir,
+                     random_corpus=args.random_corpus)
     return 0
 
 

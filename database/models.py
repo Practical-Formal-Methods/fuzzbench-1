@@ -50,6 +50,7 @@ class Trial(Base):
     benchmark = Column(String, nullable=False)
     time_started = Column(DateTime(), nullable=True)
     time_ended = Column(DateTime(), nullable=True)
+    trial_group_num = Column(Integer, nullable=True)
 
     # Columns used for preemptible experiments.
     preemptible = Column(Boolean, default=False, nullable=False)

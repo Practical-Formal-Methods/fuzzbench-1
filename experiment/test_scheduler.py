@@ -114,7 +114,9 @@ docker run \\
 -e BENCHMARK={benchmark} \\
 -e EXPERIMENT=test-experiment \\
 -e TRIAL_ID=9 \\
+-e TRIAL_GROUP_NUM=10 \\
 -e MAX_TOTAL_TIME=86400 \\
+-e RANDOM_CORPUS=False \\
 -e NO_SEEDS=False \\
 -e NO_DICTIONARIES=False \\
 -e OSS_FUZZ_CORPUS=False \\
@@ -162,6 +164,7 @@ docker run \\
 -e BENCHMARK={benchmark} \\
 -e EXPERIMENT=test-experiment \\
 -e TRIAL_ID=9 \\
+-e TRIAL_GROUP_NUM=10 \\
 -e MAX_TOTAL_TIME=86400 \\
 -e DOCKER_REGISTRY=gcr.io/fuzzbench \\
 -e EXPERIMENT_FILESTORE=/tmp/experiment-data -v /tmp/experiment-data:/tmp/experiment-data \\
@@ -187,7 +190,7 @@ def _test_create_trial_instance(  # pylint: disable=too-many-locals
     fuzzer_param = 'fuzzer-a'
     trial = 9
     mocked_create_instance.side_effect = lambda *args, **kwargs: None
-    scheduler.create_trial_instance(fuzzer_param, benchmark, trial,
+    scheduler.create_trial_instance(fuzzer_param, benchmark, trial, 10,
                                     experiment_config, preemptible)
     instance_name = 'r-test-experiment-9'
     expected_startup_script_path = '/tmp/%s-start-docker.sh' % instance_name

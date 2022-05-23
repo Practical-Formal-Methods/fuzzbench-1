@@ -115,15 +115,27 @@ def get_clusterfuzz_seed_corpus_path(fuzz_target_path):
     return seed_corpus_path if os.path.exists(seed_corpus_path) else None
 
 
-def _copy_custom_seed_corpus(corpus_directory):
-    "Copy custom seed corpus provided by user"
+def _copy_custom_seed_corpus(corpus_directory, random_corpus=False):
+    """Copy custom seed corpus provided by user. If random corpus is set then 
+    copy from the random copora directory instead.
+    """
     shutil.rmtree(corpus_directory)
     benchmark = environment.get('BENCHMARK')
-    benchmark_custom_corpus_dir = posixpath.join(
-        experiment_utils.get_custom_seed_corpora_filestore_path(), benchmark)
-    filestore_utils.cp(benchmark_custom_corpus_dir,
-                       corpus_directory,
-                       recursive=True)
+    benchmark_corpus_dir = None
+    # copy preselected random seeds of running benchmark
+    if random_corpus:
+        trial_group_num = environment.get('TRIAL_GROUP_NUM')
+        random_corpora_dir = experiment_utils.get_random_corpora_filestore_path(
+        )
+        random_corpora_sub_dir = 'trial-group-%s' % int(trial_group_num)
+        benchmark_corpus_dir = posixpath.join(random_corpora_dir, benchmark,
+                                              random_corpora_sub_dir)
+    else:
+        benchmark_corpus_dir = posixpath.join(
+            experiment_utils.get_custom_seed_corpora_filestore_path(),
+            benchmark)
+
+    shutil.copytree(benchmark_corpus_dir, corpus_directory)
 
 
 def _unpack_clusterfuzz_seed_corpus(fuzz_target_path, corpus_directory):
@@ -184,7 +196,7 @@ def run_fuzzer(max_total_time, log_filename):
         return
 
     if environment.get('CUSTOM_SEED_CORPUS_DIR'):
-        _copy_custom_seed_corpus(input_corpus)
+        _copy_custom_seed_corpus(input_corpus, environment.get('RANDOM_CORPUS'))
     else:
         _unpack_clusterfuzz_seed_corpus(target_binary, input_corpus)
     _clean_seed_corpus(input_corpus)
