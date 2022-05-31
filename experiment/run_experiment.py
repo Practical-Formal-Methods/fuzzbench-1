@@ -453,6 +453,8 @@ class LocalDispatcher(BaseDispatcher):
             '-e',
             set_docker_registry_arg,
             '-e',
+            set_snapshot_period_arg,
+            '-e',
             'LOCAL_EXPERIMENT=True',
             '--cap-add=SYS_PTRACE',
             '--cap-add=SYS_NICE',
