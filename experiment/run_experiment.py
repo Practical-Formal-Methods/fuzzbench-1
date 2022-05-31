@@ -406,6 +406,7 @@ class LocalDispatcher(BaseDispatcher):
             'SQL_DATABASE_URL=sqlite:///{}?check_same_thread=False'.format(
                 os.path.join(experiment_filestore_path, 'local.db')))
 
+        snapshot_period = self.config['snapshot_period']
         docker_registry = self.config['docker_registry']
         set_instance_name_arg = 'INSTANCE_NAME={instance_name}'.format(
             instance_name=self.instance_name)
@@ -415,6 +416,7 @@ class LocalDispatcher(BaseDispatcher):
             self.config['experiment_filestore'])
         # TODO: (#484) Use config in function args or set as environment
         # variables.
+        set_snapshot_period_arg = 'SNAPSHOT_PERIOD={}'.format(snapshot_period)
         set_docker_registry_arg = 'DOCKER_REGISTRY={}'.format(docker_registry)
         set_experiment_filestore_arg = (
             'EXPERIMENT_FILESTORE={experiment_filestore}'.format(
