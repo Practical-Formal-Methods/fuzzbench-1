@@ -677,7 +677,7 @@ def _start_trial(trial: TrialProxy, experiment_config: dict, cpuset=None):
     _initialize_logs(experiment_config['experiment'])
     logger.info('Start trial %d.', trial.id)
     started = create_trial_instance(trial.fuzzer, trial.benchmark, trial.id,
-                                    trial.trial_group_num, experiment_config, 
+                                    trial.trial_group_num, experiment_config,
                                     trial.preemptible, cpuset)
     if started:
         trial.time_started = datetime_now()
@@ -748,8 +748,8 @@ def create_trial_instance(  # pylint: disable=too-many-arguments
         experiment_config['experiment'], trial_id)
     startup_script = render_startup_script_template(instance_name, fuzzer,
                                                     benchmark, trial_id,
-                                                    trial_group_num, experiment_config, 
-                                                    cpuset)
+                                                    trial_group_num,
+                                                    experiment_config, cpuset)
     startup_script_path = '/tmp/%s-start-docker.sh' % instance_name
     with open(startup_script_path, 'w') as file_handle:
         file_handle.write(startup_script)

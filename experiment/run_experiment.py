@@ -134,7 +134,8 @@ def read_and_validate_experiment_config(config_filename: str) -> Dict:
     if not valid:
         raise ValidationError('Config: %s is invalid.' % config_filename)
 
-    config['snapshot_period'] = config.get('snapshot_period', experiment_utils.DEFAULT_SNAPSHOT_SECONDS)
+    config['snapshot_period'] = config.get(
+        'snapshot_period', experiment_utils.DEFAULT_SNAPSHOT_SECONDS)
     config['local_experiment'] = local_experiment
     return config
 

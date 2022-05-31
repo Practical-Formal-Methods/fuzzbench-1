@@ -1,6 +1,5 @@
 import random
 import os
-import zipfile
 import tempfile
 import tarfile
 import multiprocessing
@@ -18,8 +17,7 @@ from common import benchmark_utils
 from experiment.build import build_utils
 from common import experiment_path as exp_path
 
-MAX_RANDOM_CORPUS_FILES = 5
-
+MAX_RANDOM_CORPUS_FILES = 1
 
 def get_covered_branches_per_function(coverage_info):
     function_coverage_info = coverage_info["data"][0]["functions"]
@@ -36,7 +34,6 @@ def get_covered_branches_per_function(coverage_info):
                     function_name, branch[0], branch[1], branch[2], branch[3])
                 covered_branches.add(coverage_key)
     return covered_branches
-
 
 def get_covered_branches(coverage_binary, corpus_dir):
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -103,64 +100,64 @@ def prepare_benchmark_random_corpus(benchmark: str,
     filesystem.create_directory(benchmark_random_corpora)
 
     # get inputs from the custom seed corpus directory
-    corpus_archive_filename = os.path.join(
+    benchmark_custom_corpus_dir = os.path.join(
         experiment_utils.get_custom_seed_corpora_filestore_path(),
-        f'{benchmark}.zip')
+        f'{benchmark}')
 
     with tempfile.TemporaryDirectory() as tmp_dir:
+        all_corpus_files = []
+        for root, _, files in os.walk(benchmark_custom_corpus_dir):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                all_corpus_files.append(file_path)
+
         if target_fuzzing:
             coverage_binary = get_coverage_binary(benchmark, tmp_dir)
 
-        with zipfile.ZipFile(corpus_archive_filename) as zip_file:
-            # only consider file not directory
-            corpus_files = [
-                f for f in zip_file.infolist() if not f.filename.endswith('/')
-            ]
-            for trial_group_num in range(num_trials):
-                logs.info('Preparing random corpus: %s, trial_group: %d',
-                          benchmark, trial_group_num)
+        # all trials in the same group will start with the same
+        # set of randomly selected seed files
+        for trial_group_num in range(num_trials):
+            logs.info('Preparing random corpus: %s, trial_group: %d', benchmark,
+                      trial_group_num)
 
-                trial_group_subdir = 'trial-group-%d' % trial_group_num
-                custom_corpus_trial_dir = os.path.join(benchmark_random_corpora,
-                                                       trial_group_subdir)
-                src_dir = os.path.join(tmp_dir, "source")
-                filesystem.recreate_directory(src_dir)
+            trial_group_subdir = 'trial-group-%d' % trial_group_num
+            custom_corpus_trial_dir = os.path.join(benchmark_random_corpora,
+                                                   trial_group_subdir)
+            src_dir = os.path.join(tmp_dir, "source")
+            filesystem.recreate_directory(src_dir)
 
-                source_files = random.sample(corpus_files,
-                                             MAX_RANDOM_CORPUS_FILES)
-                for file in source_files:
-                    zip_file.extract(file, src_dir)
+            source_files = random.sample(all_corpus_files,
+                                         MAX_RANDOM_CORPUS_FILES)
+            for file in source_files:
+                filesystem.copy(file, src_dir)
 
-                if target_fuzzing:
-                    dest_dir = os.path.join(tmp_dir, "dest")
-                    filesystem.recreate_directory(dest_dir)
+            if target_fuzzing:
+                dest_dir = os.path.join(tmp_dir, "dest")
+                filesystem.recreate_directory(dest_dir)
 
-                    dest_files = random.sample(corpus_files,
-                                               MAX_RANDOM_CORPUS_FILES)
-                    for file in dest_files:
-                        zip_file.extract(file, dest_dir)
+                dest_files = random.sample(all_corpus_files,
+                                           MAX_RANDOM_CORPUS_FILES)
+                for file in dest_files:
+                    filesystem.copy(file, dest_dir)
 
-                    # extract covered branches of source and destination inputs
-                    # then subtract to get targeting branches
-                    src_branches = get_covered_branches(coverage_binary,
-                                                        src_dir)
-                    dest_branches = get_covered_branches(
-                        coverage_binary, dest_dir)
-                    target_branches = dest_branches - src_branches
+                # extract covered branches of source and destination inputs
+                # then subtract to get targeting branches
+                src_branches = get_covered_branches(coverage_binary, src_dir)
+                dest_branches = get_covered_branches(coverage_binary, dest_dir)
+                target_branches = dest_branches - src_branches
 
-                    if not target_branches:
-                        raise RuntimeError(
-                            'Unable to find target branches for %s.' %
-                            benchmark)
+                if not target_branches:
+                    raise RuntimeError(
+                        'Unable to find target branches for %s.' % benchmark)
 
-                    for branch in target_branches:
-                        target_cov = models.TargetCoverage()
-                        target_cov.trial_group_num = int(trial_group_num)
-                        target_cov.benchmark = benchmark
-                        target_cov.target_location = branch
-                        target_coverage.append(target_cov)
+                for branch in target_branches:
+                    target_cov = models.TargetCoverage()
+                    target_cov.trial_group_num = int(trial_group_num)
+                    target_cov.benchmark = benchmark
+                    target_cov.target_location = branch
+                    target_coverage.append(target_cov)
 
-                # copy only the src directory
-                filesystem.copytree(src_dir, custom_corpus_trial_dir)
+            # copy only the src directory
+            filesystem.copytree(src_dir, custom_corpus_trial_dir)
 
     return target_coverage
