@@ -340,7 +340,7 @@ def copy_resources_to_bucket(config_dir: str, config: Dict):
     # Set environment variables to use corresponding filestore_utils.
     os.environ['EXPERIMENT_FILESTORE'] = config['experiment_filestore']
     os.environ['EXPERIMENT'] = config['experiment']
-    os.environ['SNAPSHOT_PERIOD'] = config['snapshot_period']
+    os.environ['SNAPSHOT_PERIOD'] = str(config['snapshot_period'])
     experiment_filestore_path = experiment_utils.get_experiment_filestore_path()
 
     base_destination = os.path.join(experiment_filestore_path, 'input')
