@@ -134,6 +134,7 @@ def read_and_validate_experiment_config(config_filename: str) -> Dict:
     if not valid:
         raise ValidationError('Config: %s is invalid.' % config_filename)
 
+    config['snapshot_period'] = config.get('snapshot_period', experiment_utils.DEFAULT_SNAPSHOT_SECONDS)
     config['local_experiment'] = local_experiment
     return config
 
@@ -339,6 +340,7 @@ def copy_resources_to_bucket(config_dir: str, config: Dict):
     # Set environment variables to use corresponding filestore_utils.
     os.environ['EXPERIMENT_FILESTORE'] = config['experiment_filestore']
     os.environ['EXPERIMENT'] = config['experiment']
+    os.environ['SNAPSHOT_PERIOD'] = config['snapshot_period']
     experiment_filestore_path = experiment_utils.get_experiment_filestore_path()
 
     base_destination = os.path.join(experiment_filestore_path, 'input')
@@ -504,6 +506,7 @@ class GoogleCloudDispatcher(BaseDispatcher):
             'cloud_sql_instance_connection_name':
                 (cloud_sql_instance_connection_name),
             'docker_registry': self.config['docker_registry'],
+            'snapshot_period': self.config['snapshot_period'],
         }
         return template.render(**kwargs)
 
