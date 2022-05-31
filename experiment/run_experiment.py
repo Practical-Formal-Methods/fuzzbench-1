@@ -244,6 +244,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
         concurrent_builds=None,
         measurers_cpus=None,
         runners_cpus=None,
+        region_coverage=False,
         custom_seed_corpus_dir=None,
         random_corpus=None,
         target_fuzzing=False):
@@ -275,6 +276,7 @@ def start_experiment(  # pylint: disable=too-many-arguments
     # 12GB is just the amount that KLEE needs, use this default to make KLEE
     # experiments easier to run.
     config['runner_memory'] = config.get('runner_memory', '12GB')
+    config['region_coverage'] = region_coverage
 
     config['custom_seed_corpus_dir'] = custom_seed_corpus_dir
     if config['custom_seed_corpus_dir']:
@@ -616,6 +618,12 @@ def main():
                         required=False,
                         default=False,
                         action='store_true')
+    parser.add_argument('-cr',
+                        '--region-coverage',
+                        help='Use region as coverage metric.',
+                        required=False,
+                        default=False,
+                        action='store_true')
     parser.add_argument(
         '-o',
         '--oss-fuzz-corpus',
@@ -679,6 +687,7 @@ def main():
                      concurrent_builds=concurrent_builds,
                      measurers_cpus=measurers_cpus,
                      runners_cpus=runners_cpus,
+                     region_coverage=args.region_coverage,
                      custom_seed_corpus_dir=args.custom_seed_corpus_dir,
                      random_corpus=args.random_corpus,
                      target_fuzzing=args.target_fuzzing)
