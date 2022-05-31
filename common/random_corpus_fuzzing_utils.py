@@ -19,6 +19,7 @@ from common import experiment_path as exp_path
 
 MAX_RANDOM_CORPUS_FILES = 1
 
+
 def get_covered_branches_per_function(coverage_info):
     function_coverage_info = coverage_info["data"][0]["functions"]
     covered_branches = set([])
@@ -34,6 +35,7 @@ def get_covered_branches_per_function(coverage_info):
                     function_name, branch[0], branch[1], branch[2], branch[3])
                 covered_branches.add(coverage_key)
     return covered_branches
+
 
 def get_covered_branches(coverage_binary, corpus_dir):
     with tempfile.TemporaryDirectory() as tmp_dir:

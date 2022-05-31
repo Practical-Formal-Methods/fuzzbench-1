@@ -80,6 +80,7 @@ def measure_main(experiment_config):
     runners_cpus = experiment_config['runners_cpus']
     trials = experiment_config['trials']
     target_fuzzing = experiment_config['target_fuzzing']
+    region_coverage = experiment_config['region_coverage']
     measure_loop(experiment, trials, max_total_time, measurers_cpus,
                  runners_cpus, region_coverage, target_fuzzing)
 
@@ -99,13 +100,15 @@ def _process_init(cores_queue):
         psutil.Process().cpu_affinity([cpu])
 
 
-def measure_loop(experiment: str,
-                 trials: int,
-                 max_total_time: int,
-                 measurers_cpus=None,
-                 runners_cpus=None,
-                 region_coverage=False,
-                 target_fuzzing=False,):
+def measure_loop(
+    experiment: str,
+    trials: int,
+    max_total_time: int,
+    measurers_cpus=None,
+    runners_cpus=None,
+    region_coverage=False,
+    target_fuzzing=False,
+):
     """Continuously measure trials for |experiment|."""
     logger.info('Start measure_loop.')
 
@@ -150,12 +153,13 @@ def measure_loop(experiment: str,
     logger.info('Finished measure loop.')
 
 
-def measure_all_trials(experiment: str,
-                       max_total_time: int,
-                       pool,
-                       q,
-                       region_coverage=False,
-                       target_fuzzing=False) -> bool:  # pylint: disable=invalid-name
+def measure_all_trials(
+        experiment: str,
+        max_total_time: int,
+        pool,
+        q,
+        region_coverage=False,
+        target_fuzzing=False) -> bool:  # pylint: disable=invalid-name
     """Get coverage data (with coverage runs) for all active trials. Note that
     this should not be called unless multiprocessing.set_start_method('spawn')
     was called first. Otherwise it will use fork which breaks logging."""
@@ -376,7 +380,8 @@ class SnapshotMeasurer(coverage_utils.TrialCoverage):  # pylint: disable=too-man
 
     # pylint: disable=too-many-arguments
     def __init__(self, fuzzer: str, benchmark: str, trial_num: int,
-                 trial_logger: logs.Logger, trial_group_num: int, region_coverage: bool):
+                 trial_logger: logs.Logger, trial_group_num: int,
+                 region_coverage: bool):
         super().__init__(fuzzer, benchmark, trial_num, trial_group_num)
         self.logger = trial_logger
         self.corpus_dir = os.path.join(self.measurement_dir, 'corpus')
@@ -662,8 +667,8 @@ def get_fuzzer_stats(stats_filestore_path):
 
 
 def measure_trial_coverage(  # pylint: disable=invalid-name
-        measure_req, max_cycle: int, q: multiprocessing.Queue,
-        region_coverage, target_fuzzing) -> models.Snapshot:
+        measure_req, max_cycle: int, q: multiprocessing.Queue, region_coverage,
+        target_fuzzing) -> models.Snapshot:
     """Measure the coverage obtained by |trial_num| on |benchmark| using
     |fuzzer|."""
     initialize_logs()
@@ -696,7 +701,8 @@ def measure_trial_coverage(  # pylint: disable=invalid-name
 
 def measure_snapshot_coverage(  # pylint: disable=too-many-locals
         fuzzer: str, benchmark: str, trial_num: int, cycle: int,
-        region_coverage, trial_group_num: int, target_fuzzing: bool) -> models.Snapshot:
+        region_coverage, trial_group_num: int,
+        target_fuzzing: bool) -> models.Snapshot:
     """Measure coverage of the snapshot for |cycle| for |trial_num| of |fuzzer|
     and |benchmark|."""
     snapshot_logger = logs.Logger('measurer',
@@ -708,7 +714,8 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
                                       'trial_group_num': str(trial_group_num)
                                   })
     snapshot_measurer = SnapshotMeasurer(fuzzer, benchmark, trial_num,
-                                         snapshot_logger, trial_group_num, region_coverage)
+                                         snapshot_logger, trial_group_num,
+                                         region_coverage)
 
     measuring_start_time = time.time()
     snapshot_logger.info('Measuring cycle: %d.', cycle)
@@ -725,7 +732,6 @@ def measure_snapshot_coverage(  # pylint: disable=too-many-locals
                                trial_group_num=trial_group_num,
                                targets_covered=targets_covered,
                                edges_covered=regions_covered,
-        
                                fuzzer_stats=fuzzer_stats_data,
                                crashes=[])
 
