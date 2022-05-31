@@ -233,10 +233,12 @@ def get_coverage_infomation(coverage_summary_file):
 class TrialCoverage:  # pylint: disable=too-many-instance-attributes
     """Base class for storing and getting coverage data for a trial."""
 
-    def __init__(self, fuzzer: str, benchmark: str, trial_num: int):
+    def __init__(self, fuzzer: str, benchmark: str, trial_num: int,
+                 trial_group_num: int):
         self.fuzzer = fuzzer
         self.benchmark = benchmark
         self.trial_num = trial_num
+        self.trial_group_num = trial_group_num
         self.benchmark_fuzzer_trial_dir = exp_utils.get_trial_dir(
             fuzzer, benchmark, trial_num)
         self.work_dir = exp_utils.get_work_dir()

@@ -115,15 +115,44 @@ def get_clusterfuzz_seed_corpus_path(fuzz_target_path):
     return seed_corpus_path if os.path.exists(seed_corpus_path) else None
 
 
-def _copy_custom_seed_corpus(corpus_directory):
-    "Copy custom seed corpus provided by user"
+def _unpack_random_corpus(corpus_directory):
+    # remove initial seed corpus
     shutil.rmtree(corpus_directory)
+
     benchmark = environment.get('BENCHMARK')
-    benchmark_custom_corpus_dir = posixpath.join(
-        experiment_utils.get_custom_seed_corpora_filestore_path(), benchmark)
-    filestore_utils.cp(benchmark_custom_corpus_dir,
-                       corpus_directory,
-                       recursive=True)
+    trial_group_num = environment.get('TRIAL_GROUP_NUM')
+    random_corpora_dir = experiment_utils.get_random_corpora_filestore_path()
+    random_corpora_sub_dir = 'trial-group-%s' % int(trial_group_num)
+    random_corpus_dir = posixpath.join(random_corpora_dir, benchmark,
+                                       random_corpora_sub_dir)
+    shutil.copytree(random_corpus_dir, corpus_directory)
+
+
+def _unpack_custom_seed_corpus(corpus_directory):
+    "Unpack seed corpus provided by user"
+    # remove initial seed corpus
+    shutil.rmtree(corpus_directory)
+    os.mkdir(corpus_directory)
+    benchmark = environment.get('BENCHMARK')
+    corpus_archive_filename = posixpath.join(
+        experiment_utils.get_custom_seed_corpora_filestore_path(),
+        f'{benchmark}.zip')
+    idx = 0
+    with zipfile.ZipFile(corpus_archive_filename) as zip_file:
+        for seed_corpus_file in zip_file.infolist():
+            if seed_corpus_file.filename.endswith('/'):
+                # Ignore directories.
+                continue
+
+            if seed_corpus_file.file_size > CORPUS_ELEMENT_BYTES_LIMIT:
+                continue
+
+            output_filename = '%016d' % idx
+            output_file_path = os.path.join(corpus_directory, output_filename)
+            zip_file.extract(seed_corpus_file, output_file_path)
+            idx += 1
+
+    logs.info('Unarchived %d files from custom seed corpus.', idx)
 
 
 def _unpack_clusterfuzz_seed_corpus(fuzz_target_path, corpus_directory):
@@ -184,7 +213,11 @@ def run_fuzzer(max_total_time, log_filename):
         return
 
     if environment.get('CUSTOM_SEED_CORPUS_DIR'):
-        _copy_custom_seed_corpus(input_corpus)
+        if environment.get('RANDOM_CORPUS') or environment.get(
+                'TARGET_FUZZING'):
+            _unpack_random_corpus(input_corpus)
+        else:
+            _unpack_custom_seed_corpus(input_corpus)
     else:
         _unpack_clusterfuzz_seed_corpus(target_binary, input_corpus)
     _clean_seed_corpus(input_corpus)
